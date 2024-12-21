@@ -1,60 +1,33 @@
-import { useState } from "react";
+import { useUser } from "../context/UserContext";
 import { ethers } from "ethers";
-import Link from "next/link"; // Asegúrate de importar Link correctamente desde Next.js.
 
 const Login = () => {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const { authenticate } = useUser();
 
-  const connectWallet = async () => {
+  const connectAndAuthenticate = async () => {
     if (typeof window === "undefined" || !window.ethereum) {
       alert("MetaMask no está instalado. Por favor, instálalo.");
       return;
     }
 
     try {
-      // Usar BrowserProvider en ethers.js v6
       const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const walletAddress = await signer.getAddress();
 
-      // Solicitar acceso a la wallet
-      const accounts = await provider.send("eth_requestAccounts", []); // Pedir acceso a la wallet
-      console.log(accounts);
-      const signer = await provider.getSigner(); // Obtener el signer
-      const address = await signer.getAddress(); // Dirección conectada
+      const message = "Autenticación en PropFirm";
+      const signature = await signer.signMessage(message);
 
-      setWalletAddress(address); // Guardar la dirección en el estado
+      await authenticate(walletAddress, signature);
     } catch (error) {
-      console.error("Error al conectar la wallet:", error);
-      alert(
-        "Hubo un error al conectar la wallet. Revisa la consola para más detalles."
-      );
+      console.error("Error al autenticar:", error);
+      alert("Hubo un error al autenticar.");
     }
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-gray-100">
-      {walletAddress ? (
-        <div>
-          <p className="text-lg">Wallet conectada: {walletAddress}</p>
-          <Link href="/dashboard">
-            <button className="mt-4 bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">
-              Ir al Dashboard
-            </button>
-          </Link>
-          <button
-            className="mt-4 bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 ml-4"
-            onClick={() => setWalletAddress(null)}
-          >
-            Desconectar Wallet
-          </button>
-        </div>
-      ) : (
-        <button
-          className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-          onClick={connectWallet}
-        >
-          Conectar Wallet
-        </button>
-      )}
+    <div>
+      <button onClick={connectAndAuthenticate}>Conectar y Autenticar Wallet</button>
     </div>
   );
 };
