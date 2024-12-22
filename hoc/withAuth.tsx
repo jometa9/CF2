@@ -1,19 +1,35 @@
-import { useUser } from "../context/UserContext";
-import { useRouter } from "next/router";
 import { useEffect } from "react";
+import { useRouter } from "next/router";
 
-const withAuth = (Component: React.FC) => {
+const withAuth = (WrappedComponent: React.ComponentType) => {
   return (props: any) => {
-    const { isAuthenticated } = useUser();
     const router = useRouter();
 
     useEffect(() => {
-      if (!isAuthenticated) {
-        router.push("/login");
-      }
-    }, [isAuthenticated, router]);
+      const token = localStorage.getItem("token");
 
-    return isAuthenticated ? <Component {...props} /> : null;
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      fetch("/api/validate-token", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.valid) {
+            localStorage.removeItem("token");
+            router.push("/login");
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem("token");
+          router.push("/login");
+        });
+    }, []);
+
+    return <WrappedComponent {...props} />;
   };
 };
 

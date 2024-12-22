@@ -1,12 +1,12 @@
-import { useUser } from "../context/UserContext";
+import { useRouter } from "next/router";
 import { ethers } from "ethers";
 
 const Login = () => {
-  const { authenticate } = useUser();
+  const router = useRouter();
 
-  const connectAndAuthenticate = async () => {
-    if (typeof window === "undefined" || !window.ethereum) {
-      alert("MetaMask no está instalado. Por favor, instálalo.");
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      alert("MetaMask no está instalado.");
       return;
     }
 
@@ -18,16 +18,28 @@ const Login = () => {
       const message = "Autenticación en PropFirm";
       const signature = await signer.signMessage(message);
 
-      await authenticate(walletAddress, signature);
+      const res = await fetch("/api/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ walletAddress, signature }),
+      });
+
+      if (res.ok) {
+        const { token } = await res.json();
+        localStorage.setItem("token", token);
+        router.push("/dashboard");
+      } else {
+        const { error } = await res.json();
+        alert(error);
+      }
     } catch (error) {
-      console.error("Error al autenticar:", error);
-      alert("Hubo un error al autenticar.");
+      console.error("Error al conectar la wallet:", error);
     }
   };
 
   return (
     <div>
-      <button onClick={connectAndAuthenticate}>Conectar y Autenticar Wallet</button>
+      <button onClick={connectWallet}>Conectar Wallet</button>
     </div>
   );
 };
